@@ -1,0 +1,57 @@
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: labuser
+      POSTGRES_PASSWORD: labpass123
+      POSTGRES_DB: labdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - log-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labuser -d labdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    container_name: fluent-bit
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - log-net
+
+  log-generator:
+    image: python:3.11-slim
+    container_name: log-generator
+    volumes:
+      - ./generator.py:/app/generator.py
+    working_dir: /app
+    command: python generator.py
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "localhost:24224"
+        fluentd-async: "true"
+        tag: "docker.generator"
+    networks:
+      - log-net
+
+volumes:
+  pgdata:
+
+networks:
+  log-net:
+    driver: bridge
