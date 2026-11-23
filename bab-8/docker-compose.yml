@@ -1,0 +1,19 @@
+services:
+  app:
+    build: ./app
+    image: bab8-app:1.0
+    container_name: bab8-app
+    ports:
+      - "127.0.0.1:8088:5000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
